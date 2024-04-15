@@ -26,7 +26,7 @@ add_executable(go1_locomotion
     src/model/orbit_base_model.cpp
     src/model/go1_rough_model.cpp
     src/model/go1_flat_model.cpp
-    src/agent/unitree_sdk_agent.cpp
+    src/agent/go1_agent.cpp
 )
 
 target_link_libraries(go1_locomotion

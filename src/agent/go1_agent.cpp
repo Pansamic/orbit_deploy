@@ -1,20 +1,21 @@
-#include "agent/unitree_sdk_agent.h"
+#include <iostream>
+#include "agent/go1_agent.h"
 
-UnitreeSDKAgent::UnitreeSDKAgent(std::string model_type)
+Go1Agent::Go1Agent(std::string model_type)
 : safety_(UNITREE_LEGGED_SDK::LeggedType::Go1),
   udp_(UNITREE_LEGGED_SDK::LOWLEVEL, 8090, "192.168.123.10", 8007)
 {
-    if(model_type == "go1_rough")
+    if(model_type == ModelType::GO1_ROUGH)
     {
         go1_rough_model_ = std::make_shared<Go1RoughModel>();
     }
-    else if(model_type == "go1_flat")
+    else if(model_type == ModelType::GO1_FLAT)
     {
         go1_flat_model_ = std::make_shared<Go1FlatModel>();
     }
     else
     {
-        throw UnitreeSDKAgentException("Invalid model type");
+        throw Go1AgentException("Invalid model type");
     }
     model_type_ = model_type;
 
@@ -107,30 +108,30 @@ UnitreeSDKAgent::UnitreeSDKAgent(std::string model_type)
     udp_.GetRecv(state_);
 }
 
-UnitreeSDKAgent::~UnitreeSDKAgent()
+Go1Agent::~Go1Agent()
 {
     Go1CalibrateProne();
 }
 
-void UnitreeSDKAgent::Run()
+void Go1Agent::Run()
 {
-    if(model_type_ == "go1_rough")
+    if(model_type_ == ModelType::GO1_ROUGH)
     {
         Go1CalibrateStand();
         Go1RoughRun();
     }
-    else if(model_type_ == "go1_flat")
+    else if(model_type_ == ModelType::GO1_FLAT)
     {
         Go1CalibrateStand();
         Go1FlatRun();
     }
     else
     {
-        throw UnitreeSDKAgentException("Invalid model type");
+        throw Go1AgentException("Invalid model type");
     }
 }
 
-void UnitreeSDKAgent::Go1RoughRun()
+void Go1Agent::Go1RoughRun()
 {
     while (true)
     {
@@ -180,7 +181,7 @@ void UnitreeSDKAgent::Go1RoughRun()
     }
 }
 
-void UnitreeSDKAgent::Go1FlatRun()
+void Go1Agent::Go1FlatRun()
 {
     cmd_.motorCmd[UNITREE_LEGGED_SDK::FL_0].tau = 0;
     cmd_.motorCmd[UNITREE_LEGGED_SDK::FR_0].tau = 0;
@@ -246,7 +247,7 @@ void UnitreeSDKAgent::Go1FlatRun()
     }
 }
 
-void UnitreeSDKAgent::Go1RoughGetObs()
+void Go1Agent::Go1RoughGetObs()
 {
     udp_.Recv();
     udp_.GetRecv(state_);
@@ -305,7 +306,7 @@ void UnitreeSDKAgent::Go1RoughGetObs()
     projected_gravity_[2] = -state_.imu.accelerometer[2];
 }
 
-void UnitreeSDKAgent::Go1FlatGetObs()
+void Go1Agent::Go1FlatGetObs()
 {
     udp_.Recv();
     udp_.GetRecv(state_);
@@ -365,7 +366,7 @@ void UnitreeSDKAgent::Go1FlatGetObs()
     projected_gravity_[2] = -state_.imu.accelerometer[2];
 }
 
-void UnitreeSDKAgent::Go1CalibrateStand()
+void Go1Agent::Go1CalibrateStand()
 {
 
     size_t calibrate_steps = 100;
@@ -430,7 +431,7 @@ void UnitreeSDKAgent::Go1CalibrateStand()
     std::cout << "Calibration done" << std::endl;
 }
 
-void UnitreeSDKAgent::Go1CalibrateProne()
+void Go1Agent::Go1CalibrateProne()
 {
     size_t calibrate_steps = 100;
     float position_error[12];
@@ -474,7 +475,7 @@ void UnitreeSDKAgent::Go1CalibrateProne()
     
 }
 
-void UnitreeSDKAgent::Go1ProcessActions(std::vector<float>& actions)
+void Go1Agent::Go1ProcessActions(std::vector<float>& actions)
 {
     for(int i=0; i<actions.size() ; i++)
     {
@@ -487,7 +488,7 @@ void UnitreeSDKAgent::Go1ProcessActions(std::vector<float>& actions)
     }
 }
 
-void UnitreeSDKAgent::Go1ProcessActions(float actions[12])
+void Go1Agent::Go1ProcessActions(float actions[12])
 {
     for(int i=0; i<kMotorAmount ; i++)
     {
@@ -500,7 +501,7 @@ void UnitreeSDKAgent::Go1ProcessActions(float actions[12])
     }
 }
 
-void UnitreeSDKAgent::Go1ExecuteActions(std::vector<float>& actions)
+void Go1Agent::Go1ExecuteActions(std::vector<float>& actions)
 {
     cmd_.motorCmd[UNITREE_LEGGED_SDK::FL_0].q = actions[0];
     cmd_.motorCmd[UNITREE_LEGGED_SDK::FR_0].q = actions[1];
@@ -521,7 +522,7 @@ void UnitreeSDKAgent::Go1ExecuteActions(std::vector<float>& actions)
     udp_.Send();
 }
 
-void UnitreeSDKAgent::Go1ExecuteActions(float actions[12])
+void Go1Agent::Go1ExecuteActions(float actions[12])
 {
     cmd_.motorCmd[UNITREE_LEGGED_SDK::FL_0].q = actions[0];
     cmd_.motorCmd[UNITREE_LEGGED_SDK::FR_0].q = actions[1];
@@ -542,28 +543,12 @@ void UnitreeSDKAgent::Go1ExecuteActions(float actions[12])
     udp_.Send();
 }
 
-void UnitreeSDKAgent::SdkReceive()
+void Go1Agent::SdkReceive()
 {
     udp_.Recv();
 }
 
-void UnitreeSDKAgent::SdkSend()
+void Go1Agent::SdkSend()
 {
     udp_.Send();
-}
-
-Eigen::Matrix3d UnitreeSDKAgent::getRotationMatrixFromRPY(double roll, double pitch, double yaw)
-{
-    // Create the rotation matrices for roll, pitch, and yaw
-    Eigen::AngleAxisd rollAngle(roll, Eigen::Vector3d::UnitX());
-    Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitY());
-    Eigen::AngleAxisd yawAngle(yaw, Eigen::Vector3d::UnitZ());
-
-    // Combine the rotations
-    Eigen::Quaternion<double> q = yawAngle * pitchAngle * rollAngle;
-
-    // Convert the quaternion to a rotation matrix
-    Eigen::Matrix3d rotationMatrix = q.matrix();
-
-    return rotationMatrix;
 }

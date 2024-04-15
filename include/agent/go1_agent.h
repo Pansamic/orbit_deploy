@@ -1,25 +1,28 @@
-#ifndef UNITREE_SDK_AGENT_H
-#define UNITREE_SDK_AGENT_H
+#ifndef GO1_AGENT_H
+#define GO1_AGENT_H
 
-#include <iostream>
-#include <Eigen/Dense>
+#include <vector>
+#include <memory>
+#include <string>
+#include <exception>
+
 #include "model/go1_rough_model.h"
 #include "model/go1_flat_model.h"
 #include "unitree_legged_sdk/unitree_legged_sdk.h"
 
-class UnitreeSDKAgent
+class Go1Agent
 {
 public:
 
-    UnitreeSDKAgent(std::string model_type);
-    ~UnitreeSDKAgent();
+    Go1Agent(std::string model_type);
+    ~Go1Agent();
     void Run();
 
 private:
-    class UnitreeSDKAgentException : public std::exception
+    class Go1AgentException : public std::exception
     {
     public:
-        UnitreeSDKAgentException(const std::string& message) : message_(message) {}
+        Go1AgentException(const std::string& message) : message_(message) {}
         const char* what() const noexcept override { return message_.c_str(); }
     private:
         std::string message_;
@@ -44,7 +47,7 @@ private:
     std::vector<float> joint_velocities_;
     std::vector<float> height_scan_;
 
-    /**
+    /**s
      * order: FL_hip,   FR_hip,   RL_hip,   RR_hip,
      *        FL_thigh, FR_thigh, RL_thigh, RR_thigh,
      *        FL_calf,  FR_calf,  RL_calf,  RR_calf
@@ -64,8 +67,8 @@ private:
     
     void Go1RoughRun();
     void Go1FlatRun();
-    void Go1RoughGetObs();
-    void Go1FlatGetObs();
+    virtual void Go1RoughGetObs();
+    virtual void Go1FlatGetObs();
     void Go1CalibrateStand();
     void Go1CalibrateProne();
     void Go1ProcessActions(std::vector<float>& actions);
@@ -74,8 +77,13 @@ private:
     void Go1ExecuteActions(float actions[12]);
     void SdkReceive();
     void SdkSend();
-
-    Eigen::Matrix3d getRotationMatrixFromRPY(double roll, double pitch, double yaw);
 };
 
-#endif // UNITREE_SDK_AGENT_H
+namespace ModelType
+{
+    const std::string GO1_ROUGH = "go1_rough";
+    const std::string GO1_FLAT = "go1_flat";
+}
+
+
+#endif // GO1_AGENT_H
