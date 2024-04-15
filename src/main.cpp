@@ -1,4 +1,3 @@
-#include <iostream>
 #include "agent/go1_agent.h"
 
 int main()
