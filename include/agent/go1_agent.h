@@ -40,6 +40,7 @@ private:
     std::vector<float> base_lin_vel_;
     std::vector<float> base_ang_vel_;
     std::vector<float> projected_gravity_;
+    std::vector<float> velocity_commands_;
     std::vector<float> pose_; // eular angles
     std::vector<float> actions_;
     std::vector<float> last_actions_;

@@ -22,6 +22,7 @@ Go1Agent::Go1Agent(std::string model_type)
     base_lin_vel_ = std::vector<float>(3, 0.0f);
     base_ang_vel_ = std::vector<float>(3, 0.0f);
     projected_gravity_ = std::vector<float>(3, 0.0f);
+    velocity_commands_ = std::vector<float>(3, 0.0f);
     actions_ = std::vector<float>(kMotorAmount, 0.0f);
     last_actions_ = std::vector<float>(kMotorAmount, 0.0f);
     joint_positions_ = std::vector<float>(kMotorAmount, 0.0f);
@@ -208,10 +209,10 @@ void Go1Agent::Go1FlatRun()
         // std::cout << "proj_gravity: " << projected_gravity_[0] << " " << projected_gravity_[1] << " " << projected_gravity_[2] << std::endl;
 
 
-        go1_flat_model_->SetBaseLinVel(0,0,0);
+        go1_flat_model_->SetBaseLinVel(base_lin_vel_);
         go1_flat_model_->SetBaseAngVel(base_ang_vel_);
         go1_flat_model_->SetProjectedGravity(projected_gravity_);
-        go1_flat_model_->SetVelocityCommands(0.3,0,0);
+        go1_flat_model_->SetVelocityCommands(velocity_commands_);
         go1_flat_model_->SetJointPositions(joint_positions_);
         go1_flat_model_->SetJointVelocities(joint_velocities_);
         go1_flat_model_->SetActions(last_actions_);
@@ -293,17 +294,17 @@ void Go1Agent::Go1RoughGetObs()
     joint_velocities_[10] = state_.motorState[UNITREE_LEGGED_SDK::RL_2].dq;
     joint_velocities_[11] = state_.motorState[UNITREE_LEGGED_SDK::RR_2].dq;
 
-    base_lin_vel_[0] += state_.imu.accelerometer[0];
-    base_lin_vel_[1] += state_.imu.accelerometer[1];
-    base_lin_vel_[2] += state_.imu.accelerometer[2];
+    // base_lin_vel_[0] += state_.imu.accelerometer[0];
+    // base_lin_vel_[1] += state_.imu.accelerometer[1];
+    // base_lin_vel_[2] += state_.imu.accelerometer[2];
 
     base_ang_vel_[0] = state_.imu.gyroscope[0];
     base_ang_vel_[1] = state_.imu.gyroscope[1];
     base_ang_vel_[2] = state_.imu.gyroscope[2];
 
-    projected_gravity_[0] = state_.imu.accelerometer[0];
-    projected_gravity_[1] = state_.imu.accelerometer[1];
-    projected_gravity_[2] = -state_.imu.accelerometer[2];
+    // projected_gravity_[0] = state_.imu.accelerometer[0];
+    // projected_gravity_[1] = state_.imu.accelerometer[1];
+    // projected_gravity_[2] = -state_.imu.accelerometer[2];
 }
 
 void Go1Agent::Go1FlatGetObs()
@@ -352,18 +353,17 @@ void Go1Agent::Go1FlatGetObs()
     joint_velocities_[10] = state_.motorState[UNITREE_LEGGED_SDK::RL_2].dq;
     joint_velocities_[11] = state_.motorState[UNITREE_LEGGED_SDK::RR_2].dq;
 
+    // base_lin_vel_[0] += state_.imu.accelerometer[0];
+    // base_lin_vel_[1] += state_.imu.accelerometer[1];
+    // base_lin_vel_[2] += state_.imu.accelerometer[2];
 
-
-    base_lin_vel_[0] += state_.imu.accelerometer[0];
-    base_lin_vel_[1] += state_.imu.accelerometer[1];
-    base_lin_vel_[2] += state_.imu.accelerometer[2];
     base_ang_vel_[0] = state_.imu.gyroscope[0];
     base_ang_vel_[1] = state_.imu.gyroscope[1];
     base_ang_vel_[2] = state_.imu.gyroscope[2];
 
-    projected_gravity_[0] = state_.imu.accelerometer[0];
-    projected_gravity_[1] = state_.imu.accelerometer[1];
-    projected_gravity_[2] = -state_.imu.accelerometer[2];
+    // projected_gravity_[0] = state_.imu.accelerometer[0];
+    // projected_gravity_[1] = state_.imu.accelerometer[1];
+    // projected_gravity_[2] = -state_.imu.accelerometer[2];
 }
 
 void Go1Agent::Go1CalibrateStand()
