@@ -5,7 +5,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Boost REQUIRED COMPONENTS system)
-find_package(Eigen3 REQUIRED)
 
 if("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "x86_64.*")
   set(ONNX_PREFIX "x64")
@@ -27,11 +26,11 @@ add_executable(go1_locomotion
     src/model/go1_rough_model.cpp
     src/model/go1_flat_model.cpp
     src/agent/go1_agent.cpp
+    src/global_log.cpp
 )
 
 target_link_libraries(go1_locomotion
     ${Boost_LIBRARIES}
-    Eigen3::Eigen
     libonnxruntime.so
     libunitree_legged_sdk.a
     pthread
@@ -40,7 +39,7 @@ target_link_libraries(go1_locomotion
 target_include_directories(go1_locomotion PRIVATE 
     include
     ${Boost_INCLUDE_DIR}
-    ${EIGEN3_INCLUDE_DIR}
     ./third_party/unitree_legged_sdk/include
     ./third_party/onnxruntime-linux-${ONNX_PREFIX}-1.17.1/include
+    ./third_party/spdlog/include
 )
