@@ -41,5 +41,4 @@ target_include_directories(go1_locomotion PRIVATE
     ${Boost_INCLUDE_DIR}
     ./third_party/unitree_legged_sdk/include
     ./third_party/onnxruntime-linux-${ONNX_PREFIX}-1.17.1/include
-    ./third_party/spdlog/include
 )

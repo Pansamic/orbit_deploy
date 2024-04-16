@@ -188,40 +188,50 @@ void Go1Agent::Go1FlatRun()
             Go1FlatGetObs();
         }while(joint_positions_[0] == 0.0f);
 
-        go1_flat_model_->SetBaseLinVel(base_lin_vel_);
-        go1_flat_model_->SetBaseAngVel(base_ang_vel_);
-        go1_flat_model_->SetProjectedGravity(projected_gravity_);
-        go1_flat_model_->SetVelocityCommands(velocity_commands_);
-        go1_flat_model_->SetJointPositions(joint_positions_);
-        go1_flat_model_->SetJointVelocities(joint_velocities_);
-        go1_flat_model_->SetActions(last_actions_);
+        // go1_flat_model_->SetBaseLinVel(base_lin_vel_);
+        // go1_flat_model_->SetBaseAngVel(base_ang_vel_);
+        // go1_flat_model_->SetProjectedGravity(projected_gravity_);
+        // go1_flat_model_->SetVelocityCommands(velocity_commands_);
+        // go1_flat_model_->SetJointPositions(joint_positions_);
+        // go1_flat_model_->SetJointVelocities(joint_velocities_);
+        // go1_flat_model_->SetActions(last_actions_);
 
-        actions_ = go1_flat_model_->RunModel();
-        last_actions_ = actions_;
-        Go1ProcessActions(actions_);
-        Go1ExecuteActions(actions_);
-
-        std::cout << "FL_hip   | target " << actions_[0] << " , " << state_.motorState[UNITREE_LEGGED_SDK::FL_0].q << std::endl;
-        std::cout << "FR_hip   | target " << actions_[1] << " , " << state_.motorState[UNITREE_LEGGED_SDK::FR_0].q << std::endl;
-        std::cout << "RL_hip   | target " << actions_[2] << " , " << state_.motorState[UNITREE_LEGGED_SDK::RL_0].q << std::endl;
-        std::cout << "RR_hip   | target " << actions_[3] << " , " << state_.motorState[UNITREE_LEGGED_SDK::RR_0].q << std::endl;
-        std::cout << "FL_thigh | target " << actions_[4] << " , " << state_.motorState[UNITREE_LEGGED_SDK::FL_1].q << std::endl;
-        std::cout << "FR_thigh | target " << actions_[5] << " , " << state_.motorState[UNITREE_LEGGED_SDK::FR_1].q << std::endl;
-        std::cout << "RL_thigh | target " << actions_[6] << " , " << state_.motorState[UNITREE_LEGGED_SDK::RL_1].q << std::endl;
-        std::cout << "RR_thigh | target " << actions_[7] << " , " << state_.motorState[UNITREE_LEGGED_SDK::RR_1].q << std::endl;
-        std::cout << "FL_calf  | target " << actions_[8] << " , " << state_.motorState[UNITREE_LEGGED_SDK::FL_2].q << std::endl;
-        std::cout << "FR_calf  | target " << actions_[9] << " , " << state_.motorState[UNITREE_LEGGED_SDK::FR_2].q << std::endl;
-        std::cout << "RL_calf  | target " << actions_[10] << " , " << state_.motorState[UNITREE_LEGGED_SDK::RL_2].q << std::endl;
-        std::cout << "RR_calf  | target " << actions_[11] << " , " << state_.motorState[UNITREE_LEGGED_SDK::RR_2].q << std::endl;
-        std::cout << std::endl;
+        // actions_ = go1_flat_model_->RunModel();
+        // last_actions_ = actions_;
+        // Go1ProcessActions(actions_);
+        // Go1ExecuteActions(actions_);
         
+        spdlog::info("FL_hip   | target {:>7.4f} , {:>7.4f}",
+            actions_[0], state_.motorState[UNITREE_LEGGED_SDK::FL_0].q);
+        spdlog::info("FR_hip   | target {:>7.4f} , {:>7.4f}",
+            actions_[1], state_.motorState[UNITREE_LEGGED_SDK::FR_0].q);
+        spdlog::info("RL_hip   | target {:>7.4f} , {:>7.4f}",
+            actions_[2], state_.motorState[UNITREE_LEGGED_SDK::RL_0].q);
+        spdlog::info("RR_hip   | target {:>7.4f} , {:>7.4f}", 
+            actions_[3], state_.motorState[UNITREE_LEGGED_SDK::RR_0].q);
+        spdlog::info("FL_thigh | target {:>7.4f} , {:>7.4f}", 
+            actions_[4], state_.motorState[UNITREE_LEGGED_SDK::FL_1].q);
+        spdlog::info("FR_thigh | target {:>7.4f} , {:>7.4f}", 
+            actions_[5], state_.motorState[UNITREE_LEGGED_SDK::FR_1].q);
+        spdlog::info("RL_thigh | target {:>7.4f} , {:>7.4f}", 
+            actions_[6], state_.motorState[UNITREE_LEGGED_SDK::RL_1].q);
+        spdlog::info("RR_thigh | target {:>7.4f} , {:>7.4f}", 
+            actions_[7], state_.motorState[UNITREE_LEGGED_SDK::RR_1].q);
+        spdlog::info("FL_calf  | target {:>7.4f} , {:>7.4f}", 
+            actions_[8], state_.motorState[UNITREE_LEGGED_SDK::FL_2].q);
+        spdlog::info("FR_calf  | target {:>7.4f} , {:>7.4f}", 
+            actions_[9], state_.motorState[UNITREE_LEGGED_SDK::FR_2].q);
+        spdlog::info("RL_calf  | target {:>7.4f} , {:>7.4f}", 
+            actions_[10], state_.motorState[UNITREE_LEGGED_SDK::RL_2].q);
+        spdlog::info("RR_calf  | target {:>7.4f} , {:>7.4f}", 
+            actions_[11], state_.motorState[UNITREE_LEGGED_SDK::RR_2].q);
+
         safety_.PositionLimit(cmd_);
         int safety_res = safety_.PowerProtect(cmd_, state_, 1);
         if(safety_res < 0)
         {
             exit(-1);
         }
-        // udp_.SetSend(cmd_);
         udp_.Send();
         usleep(2000);
     }
@@ -232,16 +242,19 @@ void Go1Agent::Go1RoughGetObs()
     udp_.Recv();
     udp_.GetRecv(state_);
 
-    spdlog::debug("sdk recv gyro: {} {} {}",
+    spdlog::trace("sdk recv gyro: {:>7.4f} {:>7.4f} {:>7.4f}",
         state_.imu.gyroscope[0], state_.imu.gyroscope[1], state_.imu.gyroscope[2]
     );
-    spdlog::debug("sdk recv accel: {} {} {}",
+    spdlog::trace("sdk recv accel: {:>7.4f} {:>7.4f} {:>7.4f}",
         state_.imu.accelerometer[0], state_.imu.accelerometer[1], state_.imu.accelerometer[2]
     );
-    spdlog::debug("sdk recv eular: {} {} {}",
+    spdlog::trace("sdk recv eular: {:>7.4f} {:>7.4f} {:>7.4f}",
         state_.imu.rpy[0], state_.imu.rpy[1], state_.imu.rpy[2]
     );
-    spdlog::debug("sdk recv motor pos: FL0:{} FR0:{} RL0:{} RR0:{} FL1:{} FR1:{} RL1:{} RR1:{} FL2:{} FR2:{} RL2:{} RR2:{}", 
+    spdlog::debug("sdk recv motor pos: "
+        "FL0:{:>7.4f} FR0:{:>7.4f} RL0:{:>7.4f} RR0:{:>7.4f} "
+        "FL1:{:>7.4f} FR1:{:>7.4f} RL1:{:>7.4f} RR1:{:>7.4f} "
+        "FL2:{:>7.4f} FR2:{:>7.4f} RL2:{:>7.4f} RR2:{:>7.4f}", 
         state_.motorState[UNITREE_LEGGED_SDK::FL_0].q, 
         state_.motorState[UNITREE_LEGGED_SDK::FR_0].q, 
         state_.motorState[UNITREE_LEGGED_SDK::RL_0].q, 
@@ -256,7 +269,10 @@ void Go1Agent::Go1RoughGetObs()
         state_.motorState[UNITREE_LEGGED_SDK::RR_2].q
     );
 
-    spdlog::debug("sdk recv motor vel: FL0:{} FR0:{} RL0:{} RR0:{} FL1:{} FR1:{} RL1:{} RR1:{} FL2:{} FR2:{} RL2:{} RR2:{}", 
+    spdlog::trace("sdk recv motor vel: "
+        "FL0:{:>7.4f} FR0:{:>7.4f} RL0:{:>7.4f} RR0:{:>7.4f} "
+        "FL1:{:>7.4f} FR1:{:>7.4f} RL1:{:>7.4f} RR1:{:>7.4f} "
+        "FL2:{:>7.4f} FR2:{:>7.4f} RL2:{:>7.4f} RR2:{:>7.4f}", 
         state_.motorState[UNITREE_LEGGED_SDK::FL_0].dq, 
         state_.motorState[UNITREE_LEGGED_SDK::FR_0].dq, 
         state_.motorState[UNITREE_LEGGED_SDK::RL_0].dq, 
@@ -307,16 +323,19 @@ void Go1Agent::Go1FlatGetObs()
 {
     udp_.Recv();
     udp_.GetRecv(state_);
-    spdlog::debug("sdk recv gyro: {} {} {}",
+    spdlog::trace("sdk recv gyro: {:>7.4f} {:>7.4f} {:>7.4f}",
         state_.imu.gyroscope[0], state_.imu.gyroscope[1], state_.imu.gyroscope[2]
     );
-    spdlog::debug("sdk recv accel: {} {} {}",
+    spdlog::trace("sdk recv accel: {:>7.4f} {:>7.4f} {:>7.4f}",
         state_.imu.accelerometer[0], state_.imu.accelerometer[1], state_.imu.accelerometer[2]
     );
-    spdlog::debug("sdk recv eular: {} {} {}",
+    spdlog::trace("sdk recv eular: {:>7.4f} {:>7.4f} {:>7.4f}",
         state_.imu.rpy[0], state_.imu.rpy[1], state_.imu.rpy[2]
     );
-    spdlog::debug("sdk recv motor pos: FL0:{} FR0:{} RL0:{} RR0:{} FL1:{} FR1:{} RL1:{} RR1:{} FL2:{} FR2:{} RL2:{} RR2:{}", 
+    spdlog::debug("sdk recv motor pos: "
+        "FL0:{:>7.4f} FR0:{:>7.4f} RL0:{:>7.4f} RR0:{:>7.4f} "
+        "FL1:{:>7.4f} FR1:{:>7.4f} RL1:{:>7.4f} RR1:{:>7.4f} "
+        "FL2:{:>7.4f} FR2:{:>7.4f} RL2:{:>7.4f} RR2:{:>7.4f}", 
         state_.motorState[UNITREE_LEGGED_SDK::FL_0].q, 
         state_.motorState[UNITREE_LEGGED_SDK::FR_0].q, 
         state_.motorState[UNITREE_LEGGED_SDK::RL_0].q, 
@@ -331,7 +350,10 @@ void Go1Agent::Go1FlatGetObs()
         state_.motorState[UNITREE_LEGGED_SDK::RR_2].q
     );
 
-    spdlog::debug("sdk recv motor vel: FL0:{} FR0:{} RL0:{} RR0:{} FL1:{} FR1:{} RL1:{} RR1:{} FL2:{} FR2:{} RL2:{} RR2:{}", 
+    spdlog::trace("sdk recv motor vel: "
+        "FL0:{:>7.4f} FR0:{:>7.4f} RL0:{:>7.4f} RR0:{:>7.4f} "
+        "FL1:{:>7.4f} FR1:{:>7.4f} RL1:{:>7.4f} RR1:{:>7.4f} "
+        "FL2:{:>7.4f} FR2:{:>7.4f} RL2:{:>7.4f} RR2:{:>7.4f}", 
         state_.motorState[UNITREE_LEGGED_SDK::FL_0].dq, 
         state_.motorState[UNITREE_LEGGED_SDK::FR_0].dq, 
         state_.motorState[UNITREE_LEGGED_SDK::RL_0].dq, 
@@ -383,7 +405,7 @@ void Go1Agent::Go1CalibrateStand()
     size_t calibrate_steps = 100;
     float position_error[12];
     float calibration_action[12];
-    std::cout << "Calibrating..." << std::endl;
+    spdlog::info("Calibrating stand...");
     do 
     {
         Go1RoughGetObs();
@@ -435,10 +457,9 @@ void Go1Agent::Go1CalibrateStand()
             // }
         }
         Go1ExecuteActions(calibration_action);
-        usleep(20000);
+        usleep(10000);
     }
-
-    std::cout << "Calibration done" << std::endl;
+    spdlog::info("Calibrating stand done.");
 }
 
 void Go1Agent::Go1CalibrateProne()
@@ -446,7 +467,7 @@ void Go1Agent::Go1CalibrateProne()
     size_t calibrate_steps = 100;
     float position_error[12];
     float calibration_action[12];
-    std::cout << "Calibrating..." << std::endl;
+    spdlog::info("Calibrating prone...");
     do 
     {
         Go1RoughGetObs();
@@ -482,7 +503,7 @@ void Go1Agent::Go1CalibrateProne()
         Go1ExecuteActions(calibration_action);
         usleep(10000);
     }
-    
+    spdlog::info("Calibrating prone done.");
 }
 
 void Go1Agent::Go1ProcessActions(std::vector<float>& actions)
@@ -549,10 +570,10 @@ void Go1Agent::Go1ExecuteActions(float actions[12])
     cmd_.motorCmd[UNITREE_LEGGED_SDK::RL_2].q = actions[10];
     cmd_.motorCmd[UNITREE_LEGGED_SDK::RR_2].q = actions[11];
 
-    spdlog::debug("sdk send motor pos: \
-        FL0:{} FR0:{} RL0:{} RR0:{} \
-        FL1:{} FR1:{} RL1:{} RR1:{} \
-        FL2:{} FR2:{} RL2:{} RR2:{}", 
+    spdlog::debug("sdk send motor pos: "
+        "FL0:{:>7.4f} FR0:{:>7.4f} RL0:{:>7.4f} RR0:{:>7.4f} "
+        "FL1:{:>7.4f} FR1:{:>7.4f} RL1:{:>7.4f} RR1:{:>7.4f} "
+        "FL2:{:>7.4f} FR2:{:>7.4f} RL2:{:>7.4f} RR2:{:>7.4f} ", 
         cmd_.motorCmd[UNITREE_LEGGED_SDK::FL_0].q, 
         cmd_.motorCmd[UNITREE_LEGGED_SDK::FR_0].q, 
         cmd_.motorCmd[UNITREE_LEGGED_SDK::RL_0].q, 
