@@ -17,7 +17,14 @@ public:
     Go1Agent(std::string model_type);
     ~Go1Agent();
     void Run();
-
+    void SetBaseLinVel(float x, float y, float z);
+    void SetBaseLinVel(std::vector<float> base_lin_vel);
+    void SetBaseAngVel(float x, float y, float z);
+    void SetBaseAngVel(std::vector<float> base_ang_vel);
+    void SetProjectedGravity(float x, float y, float z);
+    void SetProjectedGravity(std::vector<float> projected_gravity);
+    void SetVelocityCommands(float x, float y, float w);
+    void SetVelocityCommands(std::vector<float> velocity_commands);
 private:
     class Go1AgentException : public std::exception
     {

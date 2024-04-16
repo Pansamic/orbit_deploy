@@ -141,35 +141,20 @@ void Go1Agent::Go1RoughRun()
         {
             Go1RoughGetObs();
         }while(state_.motorState[UNITREE_LEGGED_SDK::FL_0].q == 0.0f);
-        // Go1ExecuteActions(joint_positions_);
 
-        // go1_rough_model_->SetBaseLinVel(base_lin_vel_);
-        // go1_rough_model_->SetBaseAngVel(base_ang_vel_);
-        // go1_rough_model_->SetProjectedGravity(projected_gravity_);
-        // go1_rough_model_->SetVelocityCommands(0.3,0,0);
-        // go1_rough_model_->SetJointPositions(joint_positions_);
-        // go1_rough_model_->SetJointVelocities(joint_velocities_);
-        // go1_rough_model_->SetActions(last_actions_);
-        // go1_rough_model_->SetHeightScan(height_scan_);
+        go1_rough_model_->SetBaseLinVel(base_lin_vel_);
+        go1_rough_model_->SetBaseAngVel(base_ang_vel_);
+        go1_rough_model_->SetProjectedGravity(projected_gravity_);
+        go1_rough_model_->SetVelocityCommands(0.3,0,0);
+        go1_rough_model_->SetJointPositions(joint_positions_);
+        go1_rough_model_->SetJointVelocities(joint_velocities_);
+        go1_rough_model_->SetActions(last_actions_);
+        go1_rough_model_->SetHeightScan(height_scan_);
 
-        // actions_ = go1_rough_model_->RunModel();
-        // last_actions_ = actions_;
-        // Go1ProcessActions(actions_);
-        // Go1ExecuteActions(actions_);
-
-        // std::cout << "FL_hip   | target " << actions_[0] << " , " << state_.motorState[UNITREE_LEGGED_SDK::FL_0].q << std::endl;
-        // std::cout << "FR_hip   | target " << actions_[1] << " , " << state_.motorState[UNITREE_LEGGED_SDK::FR_0].q << std::endl;
-        // std::cout << "RL_hip   | target " << actions_[2] << " , " << state_.motorState[UNITREE_LEGGED_SDK::RL_0].q << std::endl;
-        // std::cout << "RR_hip   | target " << actions_[3] << " , " << state_.motorState[UNITREE_LEGGED_SDK::RR_0].q << std::endl;
-        // std::cout << "FL_thigh | target " << actions_[4] << " , " << state_.motorState[UNITREE_LEGGED_SDK::FL_1].q << std::endl;
-        // std::cout << "FR_thigh | target " << actions_[5] << " , " << state_.motorState[UNITREE_LEGGED_SDK::FR_1].q << std::endl;
-        // std::cout << "RL_thigh | target " << actions_[6] << " , " << state_.motorState[UNITREE_LEGGED_SDK::RL_1].q << std::endl;
-        // std::cout << "RR_thigh | target " << actions_[7] << " , " << state_.motorState[UNITREE_LEGGED_SDK::RR_1].q << std::endl;
-        // std::cout << "FL_calf  | target " << actions_[8] << " , " << state_.motorState[UNITREE_LEGGED_SDK::FL_2].q << std::endl;
-        // std::cout << "FR_calf  | target " << actions_[9] << " , " << state_.motorState[UNITREE_LEGGED_SDK::FR_2].q << std::endl;
-        // std::cout << "RL_calf  | target " << actions_[10] << " , " << state_.motorState[UNITREE_LEGGED_SDK::RL_2].q << std::endl;
-        // std::cout << "RR_calf  | target " << actions_[11] << " , " << state_.motorState[UNITREE_LEGGED_SDK::RR_2].q << std::endl;
-        // std::cout << std::endl;
+        actions_ = go1_rough_model_->RunModel();
+        last_actions_ = actions_;
+        Go1ProcessActions(actions_);
+        Go1ExecuteActions(actions_);
         
         safety_.PositionLimit(cmd_);
         int safety_res = safety_.PowerProtect(cmd_, state_, 1);
@@ -177,8 +162,6 @@ void Go1Agent::Go1RoughRun()
         {
             exit(-1);
         }
-        // udp_.SetSend(cmd_);
-        udp_.Send();
         usleep(2000);
     }
 }
@@ -204,11 +187,6 @@ void Go1Agent::Go1FlatRun()
         {
             Go1FlatGetObs();
         }while(joint_positions_[0] == 0.0f);
-
-        // std::cout << "lin_vel: " << base_lin_vel_[0] << " " << base_lin_vel_[1] << " " << base_lin_vel_[2] << std::endl;
-        // std::cout << "ang_vel: " << base_ang_vel_[0] << " " << base_ang_vel_[1] << " " << base_ang_vel_[2] << std::endl;
-        // std::cout << "proj_gravity: " << projected_gravity_[0] << " " << projected_gravity_[1] << " " << projected_gravity_[2] << std::endl;
-
 
         go1_flat_model_->SetBaseLinVel(base_lin_vel_);
         go1_flat_model_->SetBaseAngVel(base_ang_vel_);
@@ -600,4 +578,45 @@ void Go1Agent::SdkReceive()
 void Go1Agent::SdkSend()
 {
     udp_.Send();
+}
+
+void Go1Agent::SetBaseLinVel(float x, float y, float z)
+{
+    base_lin_vel_[0] = x;
+    base_lin_vel_[1] = y;
+    base_lin_vel_[2] = z;
+}
+void Go1Agent::SetBaseLinVel(std::vector<float> base_lin_vel)
+{
+    base_lin_vel_ = base_lin_vel;
+}
+void Go1Agent::SetBaseAngVel(float x, float y, float z)
+{
+    base_ang_vel_[0] = x;
+    base_ang_vel_[1] = y;
+    base_ang_vel_[2] = z;
+}
+void Go1Agent::SetBaseAngVel(std::vector<float> base_ang_vel)
+{
+    base_ang_vel_ = base_ang_vel;
+}
+void Go1Agent::SetProjectedGravity(float x, float y, float z)
+{
+    projected_gravity_[0] = x;
+    projected_gravity_[1] = y;
+    projected_gravity_[2] = z;
+}
+void Go1Agent::SetProjectedGravity(std::vector<float> projected_gravity)
+{
+    projected_gravity_ = projected_gravity;
+}
+void Go1Agent::SetVelocityCommands(float x, float y, float w)
+{
+    velocity_commands_[0] = x;
+    velocity_commands_[1] = y;
+    velocity_commands_[2] = w;
+}
+void Go1Agent::SetVelocityCommands(std::vector<float> velocity_commands)
+{
+    velocity_commands_ = velocity_commands;
 }
