@@ -1,4 +1,5 @@
 #include <chrono>
+#include <iostream>
 #include <sys/time.h>
 #include "global_log.h"
 std::string GetTimeStampStr()
@@ -8,7 +9,7 @@ std::string GetTimeStampStr()
     gettimeofday(&tv, NULL);
     struct tm timeinfo;
     localtime_r(&tv.tv_sec, &timeinfo);
-    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d_%H:%M:%S", &timeinfo);
     std::string strTime(buffer);
     return strTime;
 }
@@ -18,17 +19,17 @@ void InitLogger()
     static int log_init = 0;
     if(log_init)
     {
-        spdlog::warn("Logger already initialized");
+        spdlog::warn("Logger repeatly intialize. Logger already initialized.");
         return;
     }
 
     std::string log_path(__FILE__);
     log_path = log_path.substr(0, log_path.find_last_of('/'));
     log_path = log_path.substr(0, log_path.find_last_of('/'));
-    log_path = log_path.substr(0, log_path.find_last_of('/'));
     log_path += "/logs/";
     log_path += GetTimeStampStr();
     log_path += ".txt";
+    std::cout << "Log path: " << log_path << std::endl;
 
     std::vector<spdlog::sink_ptr> sinks;
 
