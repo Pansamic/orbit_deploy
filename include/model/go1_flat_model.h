@@ -44,4 +44,9 @@ private:
     const size_t kActionsSize = 12;
 };
 
+namespace ModelType
+{
+    const std::string GO1_FLAT = "go1_flat";
+}
+
 #endif // GO1_FLAT_MODEL_H

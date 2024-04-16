@@ -80,11 +80,7 @@ private:
     void SdkSend();
 };
 
-namespace ModelType
-{
-    const std::string GO1_ROUGH = "go1_rough";
-    const std::string GO1_FLAT = "go1_flat";
-}
+
 
 
 #endif // GO1_AGENT_H
