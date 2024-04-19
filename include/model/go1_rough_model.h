@@ -46,4 +46,9 @@ private:
     const size_t kHeightScanSize = 187;
 };
 
+namespace ModelType
+{
+    const std::string GO1_ROUGH = "go1_rough";
+}
+
 #endif // GO1_ROUGH_MODEL_H

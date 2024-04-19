@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <thread>
 #include <exception>
 
 #include "model/go1_rough_model.h"
@@ -17,7 +18,14 @@ public:
     Go1Agent(std::string model_type);
     ~Go1Agent();
     void Run();
-
+    void SetBaseLinVel(float x, float y, float z);
+    void SetBaseLinVel(std::vector<float> base_lin_vel);
+    void SetBaseAngVel(float x, float y, float z);
+    void SetBaseAngVel(std::vector<float> base_ang_vel);
+    void SetProjectedGravity(float x, float y, float z);
+    void SetProjectedGravity(std::vector<float> projected_gravity);
+    void SetVelocityCommands(float x, float y, float w);
+    void SetVelocityCommands(std::vector<float> velocity_commands);
 private:
     class Go1AgentException : public std::exception
     {
@@ -36,6 +44,8 @@ private:
     UNITREE_LEGGED_SDK::UDP udp_;
     UNITREE_LEGGED_SDK::LowCmd cmd_;
     UNITREE_LEGGED_SDK::LowState state_;
+    std::thread sdk_send_thread_;
+    std::thread sdk_recv_thread_;
 
     std::vector<float> base_lin_vel_;
     std::vector<float> base_ang_vel_;
@@ -54,8 +64,8 @@ private:
      *        FL_calf,  FR_calf,  RL_calf,  RR_calf
     */
     const float kStandAngles[12] = { 0.1, -0.1,  0.1, -0.1,
-                                     0.8,  0.8,  1.0,  1.0,
-                                    -1.5, -1.5, -1.5, -1.5};
+                                     0.7,  0.7,  0.7,  0.7,
+                                    -1.8, -1.8, -1.8, -1.8};
     const float kProneAngles[12] = { 0.0 ,  0.0 ,  0.0 ,  0.0,
                                      1.3 ,  1.3 ,  1.3 ,  1.3,
                                     -2.78, -2.78, -2.78, -2.78};
@@ -80,11 +90,7 @@ private:
     void SdkSend();
 };
 
-namespace ModelType
-{
-    const std::string GO1_ROUGH = "go1_rough";
-    const std::string GO1_FLAT = "go1_flat";
-}
+
 
 
 #endif // GO1_AGENT_H
