@@ -1,5 +1,6 @@
 #include <iostream>
 #include <algorithm>
+#include "global_log.h"
 #include "model/go1_flat_model.h"
 
 Go1FlatModel::Go1FlatModel() : OrbitBaseModel()
@@ -37,7 +38,7 @@ void Go1FlatModel::SetBaseLinVel(std::vector<float> base_lin_vel)
 {
     if(base_lin_vel.size() != kBaseLinVelSize)
     {
-        std::cerr << "Base linear velocity size mismatch: expected " << kBaseLinVelSize << ", got " << base_lin_vel.size() << std::endl;
+        spdlog::error("Base linear velocity size mismatch: expected {}, got {}", kBaseLinVelSize, base_lin_vel.size());
         return;
     }
     std::copy(base_lin_vel.begin(), base_lin_vel.end(), input_tensor_values_.begin());
@@ -54,7 +55,7 @@ void Go1FlatModel::SetBaseAngVel(std::vector<float> base_ang_vel)
 {
     if(base_ang_vel.size() != kBaseLinVelSize)
     {
-        std::cerr << "Base linear velocity size mismatch: expected " << kBaseLinVelSize << ", got " << base_ang_vel.size() << std::endl;
+        spdlog::error("Base angular velocity size mismatch: expected {}, got {}", kBaseAngVelSize, base_ang_vel.size());
         return;
     }
     size_t offset = kBaseLinVelSize;
@@ -72,7 +73,7 @@ void Go1FlatModel::SetProjectedGravity(std::vector<float> projected_gravity)
 {
     if(projected_gravity.size() != kProjectedGravitySize)
     {
-        std::cerr << "Projected gravity size mismatch: expected " << kProjectedGravitySize << ", got " << projected_gravity.size() << std::endl;
+        spdlog::error("Projected gravity size mismatch: expected {}, got {}", kProjectedGravitySize, projected_gravity.size());
         return;
     }
     size_t offset = kBaseLinVelSize + kBaseAngVelSize;
@@ -90,7 +91,7 @@ void Go1FlatModel::SetVelocityCommands(std::vector<float> velocity_commands)
 {
     if(velocity_commands.size() != kVelocityCommandsSize)
     {
-        std::cerr << "Velocity commands size mismatch: expected " << kVelocityCommandsSize << ", got " << velocity_commands.size() << std::endl;
+        spdlog::error("Velocity commands size mismatch: expected {}, got {}", kVelocityCommandsSize, velocity_commands.size());
         return;
     }
     size_t offset = kBaseLinVelSize + kBaseAngVelSize + kProjectedGravitySize;
@@ -126,7 +127,7 @@ void Go1FlatModel::SetJointPositions(std::vector<float> joint_positions)
 {
     if(joint_positions.size() != kJointPositionsSize)
     {
-        std::cerr << "Joint positions size mismatch: expected " << kJointPositionsSize << ", got " << joint_positions.size() << std::endl;
+        spdlog::error("Joint positions size mismatch: expected {}, got {}", kJointPositionsSize, joint_positions.size());
         return;
     }
     const size_t offset = kBaseLinVelSize + kBaseAngVelSize 
@@ -156,7 +157,7 @@ void Go1FlatModel::SetJointVelocities(std::vector<float> joint_velocities)
 {
     if(joint_velocities.size() != kJointVelocitiesSize)
     {
-        std::cerr << "Joint velocities size mismatch: expected " << kJointVelocitiesSize << ", got " << joint_velocities.size() << std::endl;
+        spdlog::error("Joint velocities size mismatch: expected {}, got {}", kJointVelocitiesSize, joint_velocities.size());
         return;
     }
     const size_t offset = kBaseLinVelSize + kBaseAngVelSize 
@@ -187,7 +188,7 @@ void Go1FlatModel::SetActions(std::vector<float> actions)
 {
     if(actions.size() != kActionsSize)
     {
-        std::cerr << "Actions size mismatch: expected " << kActionsSize << ", got " << actions.size() << std::endl;
+        spdlog::error("Actions size mismatch: expected {}, got {}", kActionsSize, actions.size());
         return;
     }
     const size_t offset = kBaseLinVelSize + kBaseAngVelSize 

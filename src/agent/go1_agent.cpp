@@ -1,4 +1,4 @@
-#include <iostream>
+#include "global_log.h"
 #include "agent/go1_agent.h"
 
 Go1Agent::Go1Agent(std::string model_type)
@@ -103,10 +103,10 @@ Go1Agent::Go1Agent(std::string model_type)
     cmd_.motorCmd[UNITREE_LEGGED_SDK::RR_2].Kp = kMotorKp;
     cmd_.motorCmd[UNITREE_LEGGED_SDK::RR_2].Kd = kMotorKd;
 
-    udp_.SetSend(cmd_);
-    udp_.Send();
-    udp_.Recv();
-    udp_.GetRecv(state_);
+    sdk_send_thread_ = std::thread(&Go1Agent::SdkSend, this);
+    sdk_recv_thread_ = std::thread(&Go1Agent::SdkReceive, this);
+    sdk_send_thread_.detach();
+    sdk_recv_thread_.detach();
 }
 
 Go1Agent::~Go1Agent()
@@ -140,35 +140,20 @@ void Go1Agent::Go1RoughRun()
         {
             Go1RoughGetObs();
         }while(state_.motorState[UNITREE_LEGGED_SDK::FL_0].q == 0.0f);
-        // Go1ExecuteActions(joint_positions_);
 
-        // go1_rough_model_->SetBaseLinVel(base_lin_vel_);
-        // go1_rough_model_->SetBaseAngVel(base_ang_vel_);
-        // go1_rough_model_->SetProjectedGravity(projected_gravity_);
-        // go1_rough_model_->SetVelocityCommands(0.3,0,0);
-        // go1_rough_model_->SetJointPositions(joint_positions_);
-        // go1_rough_model_->SetJointVelocities(joint_velocities_);
-        // go1_rough_model_->SetActions(last_actions_);
-        // go1_rough_model_->SetHeightScan(height_scan_);
+        go1_rough_model_->SetBaseLinVel(base_lin_vel_);
+        go1_rough_model_->SetBaseAngVel(base_ang_vel_);
+        go1_rough_model_->SetProjectedGravity(projected_gravity_);
+        go1_rough_model_->SetVelocityCommands(velocity_commands_);
+        go1_rough_model_->SetJointPositions(joint_positions_);
+        go1_rough_model_->SetJointVelocities(joint_velocities_);
+        go1_rough_model_->SetActions(last_actions_);
+        go1_rough_model_->SetHeightScan(height_scan_);
 
-        // actions_ = go1_rough_model_->RunModel();
-        // last_actions_ = actions_;
-        // Go1ProcessActions(actions_);
-        // Go1ExecuteActions(actions_);
-
-        // std::cout << "FL_hip   | target " << actions_[0] << " , " << state_.motorState[UNITREE_LEGGED_SDK::FL_0].q << std::endl;
-        // std::cout << "FR_hip   | target " << actions_[1] << " , " << state_.motorState[UNITREE_LEGGED_SDK::FR_0].q << std::endl;
-        // std::cout << "RL_hip   | target " << actions_[2] << " , " << state_.motorState[UNITREE_LEGGED_SDK::RL_0].q << std::endl;
-        // std::cout << "RR_hip   | target " << actions_[3] << " , " << state_.motorState[UNITREE_LEGGED_SDK::RR_0].q << std::endl;
-        // std::cout << "FL_thigh | target " << actions_[4] << " , " << state_.motorState[UNITREE_LEGGED_SDK::FL_1].q << std::endl;
-        // std::cout << "FR_thigh | target " << actions_[5] << " , " << state_.motorState[UNITREE_LEGGED_SDK::FR_1].q << std::endl;
-        // std::cout << "RL_thigh | target " << actions_[6] << " , " << state_.motorState[UNITREE_LEGGED_SDK::RL_1].q << std::endl;
-        // std::cout << "RR_thigh | target " << actions_[7] << " , " << state_.motorState[UNITREE_LEGGED_SDK::RR_1].q << std::endl;
-        // std::cout << "FL_calf  | target " << actions_[8] << " , " << state_.motorState[UNITREE_LEGGED_SDK::FL_2].q << std::endl;
-        // std::cout << "FR_calf  | target " << actions_[9] << " , " << state_.motorState[UNITREE_LEGGED_SDK::FR_2].q << std::endl;
-        // std::cout << "RL_calf  | target " << actions_[10] << " , " << state_.motorState[UNITREE_LEGGED_SDK::RL_2].q << std::endl;
-        // std::cout << "RR_calf  | target " << actions_[11] << " , " << state_.motorState[UNITREE_LEGGED_SDK::RR_2].q << std::endl;
-        // std::cout << std::endl;
+        actions_ = go1_rough_model_->RunModel();
+        last_actions_ = actions_;
+        Go1ProcessActions(actions_);
+        Go1ExecuteActions(actions_);
         
         safety_.PositionLimit(cmd_);
         int safety_res = safety_.PowerProtect(cmd_, state_, 1);
@@ -176,26 +161,12 @@ void Go1Agent::Go1RoughRun()
         {
             exit(-1);
         }
-        // udp_.SetSend(cmd_);
-        udp_.Send();
         usleep(2000);
     }
 }
 
 void Go1Agent::Go1FlatRun()
 {
-    cmd_.motorCmd[UNITREE_LEGGED_SDK::FL_0].tau = 0;
-    cmd_.motorCmd[UNITREE_LEGGED_SDK::FR_0].tau = 0;
-    cmd_.motorCmd[UNITREE_LEGGED_SDK::RL_0].tau = 0;
-    cmd_.motorCmd[UNITREE_LEGGED_SDK::RR_0].tau = 0;
-    cmd_.motorCmd[UNITREE_LEGGED_SDK::FL_1].tau = 0;
-    cmd_.motorCmd[UNITREE_LEGGED_SDK::FR_1].tau = 0;
-    cmd_.motorCmd[UNITREE_LEGGED_SDK::RL_1].tau = 0;
-    cmd_.motorCmd[UNITREE_LEGGED_SDK::RR_1].tau = 0;
-    cmd_.motorCmd[UNITREE_LEGGED_SDK::FL_2].tau = 0;
-    cmd_.motorCmd[UNITREE_LEGGED_SDK::FR_2].tau = 0;
-    cmd_.motorCmd[UNITREE_LEGGED_SDK::RL_2].tau = 0;
-    cmd_.motorCmd[UNITREE_LEGGED_SDK::RR_2].tau = 0;
 
     while (true)
     {
@@ -204,69 +175,102 @@ void Go1Agent::Go1FlatRun()
             Go1FlatGetObs();
         }while(joint_positions_[0] == 0.0f);
 
-        // std::cout << "lin_vel: " << base_lin_vel_[0] << " " << base_lin_vel_[1] << " " << base_lin_vel_[2] << std::endl;
-        // std::cout << "ang_vel: " << base_ang_vel_[0] << " " << base_ang_vel_[1] << " " << base_ang_vel_[2] << std::endl;
-        // std::cout << "proj_gravity: " << projected_gravity_[0] << " " << projected_gravity_[1] << " " << projected_gravity_[2] << std::endl;
+        // go1_flat_model_->SetBaseLinVel(base_lin_vel_);
+        // go1_flat_model_->SetBaseAngVel(base_ang_vel_);
+        // go1_flat_model_->SetProjectedGravity(projected_gravity_);
+        // go1_flat_model_->SetVelocityCommands(velocity_commands_);
+        // go1_flat_model_->SetJointPositions(joint_positions_);
+        // go1_flat_model_->SetJointVelocities(joint_velocities_);
+        // go1_flat_model_->SetActions(last_actions_);
 
-
-        go1_flat_model_->SetBaseLinVel(base_lin_vel_);
-        go1_flat_model_->SetBaseAngVel(base_ang_vel_);
-        go1_flat_model_->SetProjectedGravity(projected_gravity_);
-        go1_flat_model_->SetVelocityCommands(velocity_commands_);
-        go1_flat_model_->SetJointPositions(joint_positions_);
-        go1_flat_model_->SetJointVelocities(joint_velocities_);
-        go1_flat_model_->SetActions(last_actions_);
-
-        actions_ = go1_flat_model_->RunModel();
-        last_actions_ = actions_;
-        Go1ProcessActions(actions_);
-        Go1ExecuteActions(actions_);
-
-        std::cout << "FL_hip   | target " << actions_[0] << " , " << state_.motorState[UNITREE_LEGGED_SDK::FL_0].q << std::endl;
-        std::cout << "FR_hip   | target " << actions_[1] << " , " << state_.motorState[UNITREE_LEGGED_SDK::FR_0].q << std::endl;
-        std::cout << "RL_hip   | target " << actions_[2] << " , " << state_.motorState[UNITREE_LEGGED_SDK::RL_0].q << std::endl;
-        std::cout << "RR_hip   | target " << actions_[3] << " , " << state_.motorState[UNITREE_LEGGED_SDK::RR_0].q << std::endl;
-        std::cout << "FL_thigh | target " << actions_[4] << " , " << state_.motorState[UNITREE_LEGGED_SDK::FL_1].q << std::endl;
-        std::cout << "FR_thigh | target " << actions_[5] << " , " << state_.motorState[UNITREE_LEGGED_SDK::FR_1].q << std::endl;
-        std::cout << "RL_thigh | target " << actions_[6] << " , " << state_.motorState[UNITREE_LEGGED_SDK::RL_1].q << std::endl;
-        std::cout << "RR_thigh | target " << actions_[7] << " , " << state_.motorState[UNITREE_LEGGED_SDK::RR_1].q << std::endl;
-        std::cout << "FL_calf  | target " << actions_[8] << " , " << state_.motorState[UNITREE_LEGGED_SDK::FL_2].q << std::endl;
-        std::cout << "FR_calf  | target " << actions_[9] << " , " << state_.motorState[UNITREE_LEGGED_SDK::FR_2].q << std::endl;
-        std::cout << "RL_calf  | target " << actions_[10] << " , " << state_.motorState[UNITREE_LEGGED_SDK::RL_2].q << std::endl;
-        std::cout << "RR_calf  | target " << actions_[11] << " , " << state_.motorState[UNITREE_LEGGED_SDK::RR_2].q << std::endl;
-        std::cout << std::endl;
+        // actions_ = go1_flat_model_->RunModel();
+        // last_actions_ = actions_;
+        // Go1ProcessActions(actions_);
+        // Go1ExecuteActions(actions_);
         
+        spdlog::info("FL_hip   | target {:>7.4f} , {:>7.4f}",
+            actions_[0], state_.motorState[UNITREE_LEGGED_SDK::FL_0].q);
+        spdlog::info("FR_hip   | target {:>7.4f} , {:>7.4f}",
+            actions_[1], state_.motorState[UNITREE_LEGGED_SDK::FR_0].q);
+        spdlog::info("RL_hip   | target {:>7.4f} , {:>7.4f}",
+            actions_[2], state_.motorState[UNITREE_LEGGED_SDK::RL_0].q);
+        spdlog::info("RR_hip   | target {:>7.4f} , {:>7.4f}", 
+            actions_[3], state_.motorState[UNITREE_LEGGED_SDK::RR_0].q);
+        spdlog::info("FL_thigh | target {:>7.4f} , {:>7.4f}", 
+            actions_[4], state_.motorState[UNITREE_LEGGED_SDK::FL_1].q);
+        spdlog::info("FR_thigh | target {:>7.4f} , {:>7.4f}", 
+            actions_[5], state_.motorState[UNITREE_LEGGED_SDK::FR_1].q);
+        spdlog::info("RL_thigh | target {:>7.4f} , {:>7.4f}", 
+            actions_[6], state_.motorState[UNITREE_LEGGED_SDK::RL_1].q);
+        spdlog::info("RR_thigh | target {:>7.4f} , {:>7.4f}", 
+            actions_[7], state_.motorState[UNITREE_LEGGED_SDK::RR_1].q);
+        spdlog::info("FL_calf  | target {:>7.4f} , {:>7.4f}", 
+            actions_[8], state_.motorState[UNITREE_LEGGED_SDK::FL_2].q);
+        spdlog::info("FR_calf  | target {:>7.4f} , {:>7.4f}", 
+            actions_[9], state_.motorState[UNITREE_LEGGED_SDK::FR_2].q);
+        spdlog::info("RL_calf  | target {:>7.4f} , {:>7.4f}", 
+            actions_[10], state_.motorState[UNITREE_LEGGED_SDK::RL_2].q);
+        spdlog::info("RR_calf  | target {:>7.4f} , {:>7.4f}", 
+            actions_[11], state_.motorState[UNITREE_LEGGED_SDK::RR_2].q);
+
         safety_.PositionLimit(cmd_);
         int safety_res = safety_.PowerProtect(cmd_, state_, 1);
         if(safety_res < 0)
         {
             exit(-1);
         }
-        // udp_.SetSend(cmd_);
-        udp_.Send();
         usleep(2000);
     }
 }
 
 void Go1Agent::Go1RoughGetObs()
 {
-    udp_.Recv();
     udp_.GetRecv(state_);
-    // std::cout << "gyro: " << state_.imu.gyroscope[0] << " " << state_.imu.gyroscope[1] << " " << state_.imu.gyroscope[2] << std::endl;
-    // std::cout << "accel: " << state_.imu.accelerometer[0] << " " << state_.imu.accelerometer[1] << " " << state_.imu.accelerometer[2] << std::endl;
-    // std::cout << "eular: " << state_.imu.rpy[0] << " " << state_.imu.rpy[1] << " " << state_.imu.rpy[2] << std::endl;
-    // std::cout << "motor pos: ";
-    // for (int i = 0; i < kMotorAmount; i++)
-    // {
-    //     std::cout << state_.motorState[i].q << " ";
-    // }
-    // std::cout << std::endl;
-    // std::cout << "motor vel: ";
-    // for (int i = 0; i < kMotorAmount; i++)
-    // {
-    //     std::cout << state_.motorState[i].dq << " ";
-    // }
-    // std::cout << std::endl;
+
+    spdlog::trace("sdk recv gyro: {:>7.4f} {:>7.4f} {:>7.4f}",
+        state_.imu.gyroscope[0], state_.imu.gyroscope[1], state_.imu.gyroscope[2]
+    );
+    spdlog::trace("sdk recv accel: {:>7.4f} {:>7.4f} {:>7.4f}",
+        state_.imu.accelerometer[0], state_.imu.accelerometer[1], state_.imu.accelerometer[2]
+    );
+    spdlog::trace("sdk recv eular: {:>7.4f} {:>7.4f} {:>7.4f}",
+        state_.imu.rpy[0], state_.imu.rpy[1], state_.imu.rpy[2]
+    );
+    spdlog::debug("sdk recv motor pos: "
+        "FL0:{:>7.4f} FR0:{:>7.4f} RL0:{:>7.4f} RR0:{:>7.4f} "
+        "FL1:{:>7.4f} FR1:{:>7.4f} RL1:{:>7.4f} RR1:{:>7.4f} "
+        "FL2:{:>7.4f} FR2:{:>7.4f} RL2:{:>7.4f} RR2:{:>7.4f}", 
+        state_.motorState[UNITREE_LEGGED_SDK::FL_0].q, 
+        state_.motorState[UNITREE_LEGGED_SDK::FR_0].q, 
+        state_.motorState[UNITREE_LEGGED_SDK::RL_0].q, 
+        state_.motorState[UNITREE_LEGGED_SDK::RR_0].q,
+        state_.motorState[UNITREE_LEGGED_SDK::FL_1].q, 
+        state_.motorState[UNITREE_LEGGED_SDK::FR_1].q, 
+        state_.motorState[UNITREE_LEGGED_SDK::RL_1].q, 
+        state_.motorState[UNITREE_LEGGED_SDK::RR_1].q,
+        state_.motorState[UNITREE_LEGGED_SDK::FL_2].q, 
+        state_.motorState[UNITREE_LEGGED_SDK::FR_2].q, 
+        state_.motorState[UNITREE_LEGGED_SDK::RL_2].q, 
+        state_.motorState[UNITREE_LEGGED_SDK::RR_2].q
+    );
+
+    spdlog::trace("sdk recv motor vel: "
+        "FL0:{:>7.4f} FR0:{:>7.4f} RL0:{:>7.4f} RR0:{:>7.4f} "
+        "FL1:{:>7.4f} FR1:{:>7.4f} RL1:{:>7.4f} RR1:{:>7.4f} "
+        "FL2:{:>7.4f} FR2:{:>7.4f} RL2:{:>7.4f} RR2:{:>7.4f}", 
+        state_.motorState[UNITREE_LEGGED_SDK::FL_0].dq, 
+        state_.motorState[UNITREE_LEGGED_SDK::FR_0].dq, 
+        state_.motorState[UNITREE_LEGGED_SDK::RL_0].dq, 
+        state_.motorState[UNITREE_LEGGED_SDK::RR_0].dq,
+        state_.motorState[UNITREE_LEGGED_SDK::FL_1].dq, 
+        state_.motorState[UNITREE_LEGGED_SDK::FR_1].dq, 
+        state_.motorState[UNITREE_LEGGED_SDK::RL_1].dq, 
+        state_.motorState[UNITREE_LEGGED_SDK::RR_1].dq,
+        state_.motorState[UNITREE_LEGGED_SDK::FL_2].dq, 
+        state_.motorState[UNITREE_LEGGED_SDK::FR_2].dq, 
+        state_.motorState[UNITREE_LEGGED_SDK::RL_2].dq, 
+        state_.motorState[UNITREE_LEGGED_SDK::RR_2].dq
+    );
 
     joint_positions_[0] = state_.motorState[UNITREE_LEGGED_SDK::FL_0].q;
     joint_positions_[1] = state_.motorState[UNITREE_LEGGED_SDK::FR_0].q;
@@ -294,38 +298,59 @@ void Go1Agent::Go1RoughGetObs()
     joint_velocities_[10] = state_.motorState[UNITREE_LEGGED_SDK::RL_2].dq;
     joint_velocities_[11] = state_.motorState[UNITREE_LEGGED_SDK::RR_2].dq;
 
-    // base_lin_vel_[0] += state_.imu.accelerometer[0];
-    // base_lin_vel_[1] += state_.imu.accelerometer[1];
-    // base_lin_vel_[2] += state_.imu.accelerometer[2];
-
     base_ang_vel_[0] = state_.imu.gyroscope[0];
     base_ang_vel_[1] = state_.imu.gyroscope[1];
     base_ang_vel_[2] = state_.imu.gyroscope[2];
 
-    // projected_gravity_[0] = state_.imu.accelerometer[0];
-    // projected_gravity_[1] = state_.imu.accelerometer[1];
-    // projected_gravity_[2] = -state_.imu.accelerometer[2];
 }
 
 void Go1Agent::Go1FlatGetObs()
 {
-    udp_.Recv();
     udp_.GetRecv(state_);
-    // std::cout << "gyro: " << state_.imu.gyroscope[0] << " " << state_.imu.gyroscope[1] << " " << state_.imu.gyroscope[2] << std::endl;
-    // std::cout << "accel: " << state_.imu.accelerometer[0] << " " << state_.imu.accelerometer[1] << " " << state_.imu.accelerometer[2] << std::endl;
-    // std::cout << "eular: " << state_.imu.rpy[0] << " " << state_.imu.rpy[1] << " " << state_.imu.rpy[2] << std::endl;
-    // std::cout << "motor pos: ";
-    // for (int i = 0; i < kMotorAmount; i++)
-    // {
-    //     std::cout << state_.motorState[i].q << " ";
-    // }
-    // std::cout << std::endl;
-    // std::cout << "motor vel: ";
-    // for (int i = 0; i < kMotorAmount; i++)
-    // {
-    //     std::cout << state_.motorState[i].dq << " ";
-    // }
-    // std::cout << std::endl;
+    spdlog::trace("sdk recv gyro: {:>7.4f} {:>7.4f} {:>7.4f}",
+        state_.imu.gyroscope[0], state_.imu.gyroscope[1], state_.imu.gyroscope[2]
+    );
+    spdlog::trace("sdk recv accel: {:>7.4f} {:>7.4f} {:>7.4f}",
+        state_.imu.accelerometer[0], state_.imu.accelerometer[1], state_.imu.accelerometer[2]
+    );
+    spdlog::trace("sdk recv eular: {:>7.4f} {:>7.4f} {:>7.4f}",
+        state_.imu.rpy[0], state_.imu.rpy[1], state_.imu.rpy[2]
+    );
+    spdlog::debug("sdk recv motor pos: "
+        "FL0:{:>7.4f} FR0:{:>7.4f} RL0:{:>7.4f} RR0:{:>7.4f} "
+        "FL1:{:>7.4f} FR1:{:>7.4f} RL1:{:>7.4f} RR1:{:>7.4f} "
+        "FL2:{:>7.4f} FR2:{:>7.4f} RL2:{:>7.4f} RR2:{:>7.4f}", 
+        state_.motorState[UNITREE_LEGGED_SDK::FL_0].q, 
+        state_.motorState[UNITREE_LEGGED_SDK::FR_0].q, 
+        state_.motorState[UNITREE_LEGGED_SDK::RL_0].q, 
+        state_.motorState[UNITREE_LEGGED_SDK::RR_0].q,
+        state_.motorState[UNITREE_LEGGED_SDK::FL_1].q, 
+        state_.motorState[UNITREE_LEGGED_SDK::FR_1].q, 
+        state_.motorState[UNITREE_LEGGED_SDK::RL_1].q, 
+        state_.motorState[UNITREE_LEGGED_SDK::RR_1].q,
+        state_.motorState[UNITREE_LEGGED_SDK::FL_2].q, 
+        state_.motorState[UNITREE_LEGGED_SDK::FR_2].q, 
+        state_.motorState[UNITREE_LEGGED_SDK::RL_2].q, 
+        state_.motorState[UNITREE_LEGGED_SDK::RR_2].q
+    );
+
+    spdlog::trace("sdk recv motor vel: "
+        "FL0:{:>7.4f} FR0:{:>7.4f} RL0:{:>7.4f} RR0:{:>7.4f} "
+        "FL1:{:>7.4f} FR1:{:>7.4f} RL1:{:>7.4f} RR1:{:>7.4f} "
+        "FL2:{:>7.4f} FR2:{:>7.4f} RL2:{:>7.4f} RR2:{:>7.4f}", 
+        state_.motorState[UNITREE_LEGGED_SDK::FL_0].dq, 
+        state_.motorState[UNITREE_LEGGED_SDK::FR_0].dq, 
+        state_.motorState[UNITREE_LEGGED_SDK::RL_0].dq, 
+        state_.motorState[UNITREE_LEGGED_SDK::RR_0].dq,
+        state_.motorState[UNITREE_LEGGED_SDK::FL_1].dq, 
+        state_.motorState[UNITREE_LEGGED_SDK::FR_1].dq, 
+        state_.motorState[UNITREE_LEGGED_SDK::RL_1].dq, 
+        state_.motorState[UNITREE_LEGGED_SDK::RR_1].dq,
+        state_.motorState[UNITREE_LEGGED_SDK::FL_2].dq, 
+        state_.motorState[UNITREE_LEGGED_SDK::FR_2].dq, 
+        state_.motorState[UNITREE_LEGGED_SDK::RL_2].dq, 
+        state_.motorState[UNITREE_LEGGED_SDK::RR_2].dq
+    );
 
     joint_positions_[0] = state_.motorState[UNITREE_LEGGED_SDK::FL_0].q;
     joint_positions_[1] = state_.motorState[UNITREE_LEGGED_SDK::FR_0].q;
@@ -353,17 +378,9 @@ void Go1Agent::Go1FlatGetObs()
     joint_velocities_[10] = state_.motorState[UNITREE_LEGGED_SDK::RL_2].dq;
     joint_velocities_[11] = state_.motorState[UNITREE_LEGGED_SDK::RR_2].dq;
 
-    // base_lin_vel_[0] += state_.imu.accelerometer[0];
-    // base_lin_vel_[1] += state_.imu.accelerometer[1];
-    // base_lin_vel_[2] += state_.imu.accelerometer[2];
-
     base_ang_vel_[0] = state_.imu.gyroscope[0];
     base_ang_vel_[1] = state_.imu.gyroscope[1];
     base_ang_vel_[2] = state_.imu.gyroscope[2];
-
-    // projected_gravity_[0] = state_.imu.accelerometer[0];
-    // projected_gravity_[1] = state_.imu.accelerometer[1];
-    // projected_gravity_[2] = -state_.imu.accelerometer[2];
 }
 
 void Go1Agent::Go1CalibrateStand()
@@ -372,7 +389,7 @@ void Go1Agent::Go1CalibrateStand()
     size_t calibrate_steps = 100;
     float position_error[12];
     float calibration_action[12];
-    std::cout << "Calibrating..." << std::endl;
+    spdlog::info("Calibrating stand...");
     do 
     {
         Go1RoughGetObs();
@@ -382,18 +399,18 @@ void Go1Agent::Go1CalibrateStand()
     {
         position_error[i] = kProneAngles[i] - joint_positions_[i];
     }
-    cmd_.motorCmd[UNITREE_LEGGED_SDK::FL_0].tau = -3;
-    cmd_.motorCmd[UNITREE_LEGGED_SDK::FR_0].tau = 3;
-    cmd_.motorCmd[UNITREE_LEGGED_SDK::RL_0].tau = -3;
-    cmd_.motorCmd[UNITREE_LEGGED_SDK::RR_0].tau = 3;
-    cmd_.motorCmd[UNITREE_LEGGED_SDK::FL_1].tau = 3;
-    cmd_.motorCmd[UNITREE_LEGGED_SDK::FR_1].tau = 3;
-    cmd_.motorCmd[UNITREE_LEGGED_SDK::RL_1].tau = 2;
-    cmd_.motorCmd[UNITREE_LEGGED_SDK::RR_1].tau = 2;
-    cmd_.motorCmd[UNITREE_LEGGED_SDK::FL_2].tau = 0;
-    cmd_.motorCmd[UNITREE_LEGGED_SDK::FR_2].tau = 0;
-    cmd_.motorCmd[UNITREE_LEGGED_SDK::RL_2].tau = 0;
-    cmd_.motorCmd[UNITREE_LEGGED_SDK::RR_2].tau = 0;
+    cmd_.motorCmd[UNITREE_LEGGED_SDK::FL_0].tau = -5;
+    cmd_.motorCmd[UNITREE_LEGGED_SDK::FR_0].tau = 5;
+    cmd_.motorCmd[UNITREE_LEGGED_SDK::RL_0].tau = -5;
+    cmd_.motorCmd[UNITREE_LEGGED_SDK::RR_0].tau = 5;
+    cmd_.motorCmd[UNITREE_LEGGED_SDK::FL_1].tau = 5;
+    cmd_.motorCmd[UNITREE_LEGGED_SDK::FR_1].tau = 5;
+    cmd_.motorCmd[UNITREE_LEGGED_SDK::RL_1].tau = 5;
+    cmd_.motorCmd[UNITREE_LEGGED_SDK::RR_1].tau = 5;
+    cmd_.motorCmd[UNITREE_LEGGED_SDK::FL_2].tau = 5;
+    cmd_.motorCmd[UNITREE_LEGGED_SDK::FR_2].tau = 5;
+    cmd_.motorCmd[UNITREE_LEGGED_SDK::RL_2].tau = 5;
+    cmd_.motorCmd[UNITREE_LEGGED_SDK::RR_2].tau = 5;
 
     for(size_t i=0 ; i<calibrate_steps ; i++)
     {
@@ -408,7 +425,6 @@ void Go1Agent::Go1CalibrateStand()
         Go1ExecuteActions(calibration_action);
         usleep(10000);
     }
-    // Go1RoughGetObs();
 
     for(int i=0 ; i<kMotorAmount ; i++)
     {
@@ -425,10 +441,22 @@ void Go1Agent::Go1CalibrateStand()
             // }
         }
         Go1ExecuteActions(calibration_action);
-        usleep(20000);
+        usleep(10000);
     }
-
-    std::cout << "Calibration done" << std::endl;
+    sleep(3);
+    spdlog::info("Calibrating stand done.");
+    cmd_.motorCmd[UNITREE_LEGGED_SDK::FL_0].tau = 0;
+    cmd_.motorCmd[UNITREE_LEGGED_SDK::FR_0].tau = 0;
+    cmd_.motorCmd[UNITREE_LEGGED_SDK::RL_0].tau = 0;
+    cmd_.motorCmd[UNITREE_LEGGED_SDK::RR_0].tau = 0;
+    cmd_.motorCmd[UNITREE_LEGGED_SDK::FL_1].tau = 0;
+    cmd_.motorCmd[UNITREE_LEGGED_SDK::FR_1].tau = 0;
+    cmd_.motorCmd[UNITREE_LEGGED_SDK::RL_1].tau = 0;
+    cmd_.motorCmd[UNITREE_LEGGED_SDK::RR_1].tau = 0;
+    cmd_.motorCmd[UNITREE_LEGGED_SDK::FL_2].tau = 0;
+    cmd_.motorCmd[UNITREE_LEGGED_SDK::FR_2].tau = 0;
+    cmd_.motorCmd[UNITREE_LEGGED_SDK::RL_2].tau = 0;
+    cmd_.motorCmd[UNITREE_LEGGED_SDK::RR_2].tau = 0;
 }
 
 void Go1Agent::Go1CalibrateProne()
@@ -436,7 +464,7 @@ void Go1Agent::Go1CalibrateProne()
     size_t calibrate_steps = 100;
     float position_error[12];
     float calibration_action[12];
-    std::cout << "Calibrating..." << std::endl;
+    spdlog::info("Calibrating prone...");
     do 
     {
         Go1RoughGetObs();
@@ -472,7 +500,7 @@ void Go1Agent::Go1CalibrateProne()
         Go1ExecuteActions(calibration_action);
         usleep(10000);
     }
-    
+    spdlog::info("Calibrating prone done.");
 }
 
 void Go1Agent::Go1ProcessActions(std::vector<float>& actions)
@@ -519,7 +547,6 @@ void Go1Agent::Go1ExecuteActions(std::vector<float>& actions)
     cmd_.motorCmd[UNITREE_LEGGED_SDK::RR_2].q = actions[11];
 
     udp_.SetSend(cmd_);
-    udp_.Send();
 }
 
 void Go1Agent::Go1ExecuteActions(float actions[12])
@@ -539,16 +566,79 @@ void Go1Agent::Go1ExecuteActions(float actions[12])
     cmd_.motorCmd[UNITREE_LEGGED_SDK::RL_2].q = actions[10];
     cmd_.motorCmd[UNITREE_LEGGED_SDK::RR_2].q = actions[11];
 
+    spdlog::debug("sdk send motor pos: "
+        "FL0:{:>7.4f} FR0:{:>7.4f} RL0:{:>7.4f} RR0:{:>7.4f} "
+        "FL1:{:>7.4f} FR1:{:>7.4f} RL1:{:>7.4f} RR1:{:>7.4f} "
+        "FL2:{:>7.4f} FR2:{:>7.4f} RL2:{:>7.4f} RR2:{:>7.4f} ", 
+        cmd_.motorCmd[UNITREE_LEGGED_SDK::FL_0].q, 
+        cmd_.motorCmd[UNITREE_LEGGED_SDK::FR_0].q, 
+        cmd_.motorCmd[UNITREE_LEGGED_SDK::RL_0].q, 
+        cmd_.motorCmd[UNITREE_LEGGED_SDK::RR_0].q,
+        cmd_.motorCmd[UNITREE_LEGGED_SDK::FL_1].q, 
+        cmd_.motorCmd[UNITREE_LEGGED_SDK::FR_1].q, 
+        cmd_.motorCmd[UNITREE_LEGGED_SDK::RL_1].q, 
+        cmd_.motorCmd[UNITREE_LEGGED_SDK::RR_1].q,
+        cmd_.motorCmd[UNITREE_LEGGED_SDK::FL_2].q, 
+        cmd_.motorCmd[UNITREE_LEGGED_SDK::FR_2].q, 
+        cmd_.motorCmd[UNITREE_LEGGED_SDK::RL_2].q, 
+        cmd_.motorCmd[UNITREE_LEGGED_SDK::RR_2].q
+    );
     udp_.SetSend(cmd_);
-    udp_.Send();
 }
 
 void Go1Agent::SdkReceive()
 {
-    udp_.Recv();
+    while(1)
+    {
+        udp_.Recv();
+    }
 }
 
 void Go1Agent::SdkSend()
 {
-    udp_.Send();
+    while(1)
+    {
+        udp_.Send();
+    }
+}
+
+void Go1Agent::SetBaseLinVel(float x, float y, float z)
+{
+    base_lin_vel_[0] = x;
+    base_lin_vel_[1] = y;
+    base_lin_vel_[2] = z;
+}
+void Go1Agent::SetBaseLinVel(std::vector<float> base_lin_vel)
+{
+    base_lin_vel_ = base_lin_vel;
+}
+void Go1Agent::SetBaseAngVel(float x, float y, float z)
+{
+    base_ang_vel_[0] = x;
+    base_ang_vel_[1] = y;
+    base_ang_vel_[2] = z;
+}
+void Go1Agent::SetBaseAngVel(std::vector<float> base_ang_vel)
+{
+    base_ang_vel_ = base_ang_vel;
+}
+void Go1Agent::SetProjectedGravity(float x, float y, float z)
+{
+    projected_gravity_[0] = x;
+    projected_gravity_[1] = y;
+    projected_gravity_[2] = z;
+}
+void Go1Agent::SetProjectedGravity(std::vector<float> projected_gravity)
+{
+    projected_gravity_ = projected_gravity;
+}
+void Go1Agent::SetVelocityCommands(float x, float y, float w)
+{
+    velocity_commands_[0] = x;
+    velocity_commands_[1] = y;
+    velocity_commands_[2] = w;
+}
+void Go1Agent::SetVelocityCommands(std::vector<float> velocity_commands)
+{
+    velocity_commands_ = velocity_commands;
 }

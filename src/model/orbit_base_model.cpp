@@ -1,4 +1,5 @@
 #include <iostream>
+#include "global_log.h"
 #include "model/orbit_base_model.h"
 
 OrbitBaseModel::OrbitBaseModel()
@@ -47,10 +48,10 @@ void OrbitBaseModel::LoadModel(const char* model_path)
         input_node_dims_.data(), input_node_dims_.size()
     ));
 
-    std::cout << "input_name: " << input_name << std::endl;
-    std::cout << "input_type: " << input_type_ << std::endl; 
-    std::cout << "input_dimension: " << input_node_dims_[0] << ", " << input_node_dims_[1] << std::endl;
-    std::cout << "input_size: " << input_size_ << std::endl;
+    spdlog::info("onnx model input_name: {}", input_name);
+    spdlog::info("onnx model input_type: {}", input_type_);
+    spdlog::info("onnx model input_dimension: {}, {}", input_node_dims_[0], input_node_dims_[1]);
+    spdlog::info("onnx model input_size: {}", input_size_);
 
     /***************************************************************/
     /**************              OUTPUT               **************/
@@ -71,10 +72,10 @@ void OrbitBaseModel::LoadModel(const char* model_path)
         output_node_dims_.data(), output_node_dims_.size()
     ));
 
-    std::cout << "output_name: " << output_name << std::endl;
-    std::cout << "output_type: " << output_type_ << std::endl;
-    std::cout << "output_dimension: " << output_node_dims_[0] << ", " << output_node_dims_[1] << std::endl;
-    std::cout << "output_size: " << output_size_ << std::endl;
+    spdlog::info("onnx model input_name: {}", input_name);
+    spdlog::info("onnx model input_type: {}", input_type_);
+    spdlog::info("onnx model input_dimension: {}, {}", input_node_dims_[0], input_node_dims_[1]);
+    spdlog::info("onnx model input_size: {}", input_size_);
 }
 
 void OrbitBaseModel::RunModel()
